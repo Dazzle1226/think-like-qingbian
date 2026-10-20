@@ -29,34 +29,37 @@
 
 ## 用法
 
-按你用的工具选一种。问法都一样：「用请辩的思路看看：……」。
+问法都一样：「用请辩的思路看看：……」「蔡叔会怎么选」「请辩有没有写过……」。
 
-### 1. 编程类 agent（Codex、Cursor、Claude Code、Gemini CLI、Cline 等）
+### 下载就能用（不用装任何东西）
+
+到 [Releases](https://github.com/Dazzle1226/think-like-qingbian/releases/latest) 下载：
+
+| 你用的 | 下载 | 怎么装 |
+|---|---|---|
+| **Claude**（claude.ai 网页 / App） | [`qingbian.skill`](https://github.com/Dazzle1226/think-like-qingbian/releases/latest/download/qingbian.skill) | 设置 → Capabilities：打开「Code execution and file creation」→ Skills → Upload skill，选这个文件 |
+| **ChatGPT、Gemini、豆包、Kimi 等** | [`qingbian-chat.zip`](https://github.com/Dazzle1226/think-like-qingbian/releases/latest/download/qingbian-chat.zip) | 解压后，把 `00-method.md` 和 4 个 `cards-*.md` 上传到知识库 / 文件里（ChatGPT 建 GPT 或 Project，Gemini 建 Gem）；把 `system-prompt.md` 的全部内容粘贴到「指令 / 系统提示词」 |
+
+不支持自定义指令的工具，可以在对话开头上传这 5 个文件，再把 `system-prompt.md` 的内容作为第一条消息发出去。
+
+### 编程类 agent（Codex、Cursor、Claude Code、Gemini CLI、Cline 等）
 
 克隆本仓库，在仓库目录里打开你的 agent 直接问。仓库根目录的 `AGENTS.md` 写了完整的回答流程
 （先读方法层 → 用 `scripts/search.py` 检索卡片 → 按固定格式回答并区分【原文】/【推演】），读 `AGENTS.md` 的 agent 会自动照做；
 不会自动读的，第一句话告诉它「先读 AGENTS.md」即可。
 
-### 2. 聊天类工具（ChatGPT GPTs / Projects、Gemini Gems、豆包、Kimi 等）
+Claude Code 也可以装成全局 skill：把 `qingbian.skill` 解压到 `~/.claude/skills/`，得到 `~/.claude/skills/qingbian/`。
+
+### 自己生成下载包
+
+改了卡片或方法层后，用这两条命令重新生成上面两个文件（只用 Python 标准库）：
 
 ```bash
-python3 scripts/build_bundle.py
+python3 scripts/build_claude_skill.py   # → dist/qingbian.skill（卡片按月合并，满足 claude.ai 的 200 文件、纯 ASCII 路径限制）
+python3 scripts/build_bundle.py         # → dist/bundle/ 和 dist/qingbian-chat.zip
 ```
 
-生成 `dist/bundle/`：`00-方法层.md`、按年份合并的 `cards-2023.md` ~ `cards-2026.md`、`system-prompt.md`。
-把前几个文件上传到工具的知识库 / 文件里，把 `system-prompt.md` 的内容粘贴到「指令 / 系统提示词」。
-
-### 3. 支持 Agent Skills（SKILL.md）的工具，如 claude.ai、Claude Code
-
-```bash
-python3 scripts/build_claude_skill.py
-```
-
-生成 `dist/qingbian.skill`（方法层 + 全部卡片 + 检索脚本，约 700 KB，本质是 zip）。
-claude.ai：在设置里打开代码执行，再到 Skills 里上传（不认 `.skill` 后缀就改名成 `.zip`）。
-Claude Code 等本地工具：解压到对应的 skills 目录（Claude Code 是 `~/.claude/skills/`，得到 `~/.claude/skills/qingbian/`）。
-
-### 4. 直接检索卡片
+### 直接检索卡片
 
 ```bash
 python3 scripts/search.py -n 8 实习 学历 毕业 试错
@@ -74,7 +77,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 ```
 
 请遵守平台规则、控制请求频率。**下载的原文仅供个人阅读，请勿再次分发。**
-`fetch_articles.py` 会把每篇文章正文截到结尾标记（「（完）」「正文部分到此结束」等）之前，去掉之后的招募和推广，规则说明见 `CLAUDE.md`。
+`fetch_articles.py` 会把每篇文章正文截到结尾标记（「（完）」「正文部分到此结束」等）之前，去掉之后的招募和推广，规则说明见 `AGENTS.md`。
 
 ## 许可证
 

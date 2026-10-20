@@ -66,8 +66,9 @@
 - `scripts/fetch_album.py`：从公开合集接口拉文章列表 → `data/list.jsonl`。默认合集「认知」（album 2745537846752641026）。
 - `scripts/fetch_articles.py`：下载原文 → `data/raw/` → 清洗成 `articles/*.md`。可断点续传，失败写 `data/errors.jsonl`，遇到人机验证立即停。**原文和原始网页只在本地用，不得提交**（已在 .gitignore）。
 - `scripts/check_cards.py`：核对卡片格式；本地有原文时逐字核对锚句。
-- `scripts/build_claude_skill.py`：生成 Claude skill 包 `dist/qingbian.skill`。
-- `scripts/build_bundle.py`：生成给聊天类工具上传的合并文件 `dist/bundle/`。
+- `scripts/build_claude_skill.py`：生成 Claude skill 包 `dist/qingbian.skill`。claude.ai 只收路径全是 ASCII、不超过 200 个文件的包，所以包内卡片按月合并，脚本会检查这两条。
+- `scripts/build_bundle.py`：生成给聊天类工具上传的合并文件 `dist/bundle/` 和 `dist/qingbian-chat.zip`。
+- 卡片或方法层更新后，重跑上面两个脚本，把 `qingbian.skill` 和 `qingbian-chat.zip` 作为新 Release 的附件上传（README 里的下载链接指向最新 Release）。
 
 规则：
 
