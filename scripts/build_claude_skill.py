@@ -40,22 +40,42 @@ def validate(skill_md):
         sys.exit(f"description 为空、超过 1024 字或含尖括号（当前 {len(desc)} 字）")
 
 
+def write_references(ref):
+    """claude.ai 拒收含中文/全角符号路径的 zip，包内一律用 ASCII 文件名：
+    方法层 → method.md，卡片 → cards/日期.md（日期唯一），标题收进 index.md。"""
+    cards_dir = ref / "cards"
+    cards_dir.mkdir(parents=True)
+    shutil.copy(ROOT / "方法层.md", ref / "method.md")
+    rows = []
+    for p in sorted((ROOT / "cards").glob("*.md")):
+        date, title = p.stem[:10], p.stem[11:]
+        dst = cards_dir / f"{date}.md"
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) or dst.exists():
+            sys.exit(f"卡片文件名日期不合规或重复：{p.name}")
+        shutil.copy(p, dst)
+        rows.append(f"- {date} 《{title}》")
+    (ref / "index.md").write_text(
+        f"# 卡片目录（{len(rows)} 张）\n\n文件在 `references/cards/日期.md`。\n\n" + "\n".join(rows) + "\n",
+        encoding="utf-8")
+
+
 def main():
     check_cards()
     out = DIST / NAME
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(SRC, out, ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
-    (out / "references").mkdir()
-    shutil.copy(ROOT / "方法层.md", out / "references" / "方法层.md")
-    shutil.copytree(ROOT / "cards", out / "references" / "cards")
+    write_references(out / "references")
     validate(out / "SKILL.md")
 
     pkg = DIST / f"{NAME}.skill"
+    files = [f for f in sorted(out.rglob("*")) if f.is_file()]
+    bad = [str(f.relative_to(DIST)) for f in files if not re.fullmatch(r"[A-Za-z0-9._/-]+", str(f.relative_to(DIST)))]
+    if bad:
+        sys.exit(f"包内路径必须是 ASCII（claude.ai 会拒收）：{bad[:5]}")
     with zipfile.ZipFile(pkg, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(out.rglob("*")):
-            if f.is_file():
-                z.write(f, f.relative_to(DIST))
+        for f in files:
+            z.write(f, f.relative_to(DIST))
     n_cards = len(list((out / "references" / "cards").glob("*.md")))
     print(f"\n已生成 {pkg.relative_to(ROOT)}：{n_cards} 张卡片，{pkg.stat().st_size / 1024:.0f} KB")
 

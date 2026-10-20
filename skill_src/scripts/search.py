@@ -23,11 +23,15 @@ def sections(text):
     return parts
 
 
-def score(terms, name, text):
+def card_title(text):
+    m = re.search(r"^# (.+)$", text, re.M)
+    return m.group(1).strip() if m else ""
+
+
+def score(terms, title, text):
     sec = sections(text)
     tags = re.search(r"tags: \[(.*)\]", text)
     tags = tags.group(1) if tags else ""
-    title = name[11:-3]
     hits, s = set(), 0.0
     for t in terms:
         n_title, n_tag = title.count(t), tags.count(t)
@@ -48,15 +52,16 @@ def main():
     results = []
     for p in CARDS.glob("*.md"):
         text = p.read_text(encoding="utf-8")
-        s, hits = score(args.terms, p.name, text)
+        title = card_title(text)
+        s, hits = score(args.terms, title, text)
         if s > 0:
             one = re.search(r"\*\*(?:作者回答的)?一句话\*\*：(.+)", text)
-            results.append((s, p.name, hits, one.group(1) if one else ""))
+            results.append((s, p.name, title, hits, one.group(1) if one else ""))
     results.sort(key=lambda r: r[0], reverse=True)
 
     print(f"卡片共 {len(list(CARDS.glob('*.md')))} 张，命中 {len(results)} 张，显示前 {args.n} 张\n")
-    for s, name, hits, one in results[: args.n]:
-        print(f"[{s:.0f}] references/cards/{name}  命中：{'、'.join(sorted(hits))}")
+    for s, name, title, hits, one in results[: args.n]:
+        print(f"[{s:.0f}] references/cards/{name} 《{title}》  命中：{'、'.join(sorted(hits))}")
         print(f"  一句话：{one[:150]}\n")
 
 
