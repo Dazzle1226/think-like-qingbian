@@ -40,22 +40,31 @@ def validate(skill_md):
         sys.exit(f"description 为空、超过 1024 字或含尖括号（当前 {len(desc)} 字）")
 
 
+MAX_FILES = 200  # claude.ai 上传上限
+
+
 def write_references(ref):
-    """claude.ai 拒收含中文/全角符号路径的 zip，包内一律用 ASCII 文件名：
-    方法层 → method.md，卡片 → cards/日期.md（日期唯一），标题收进 index.md。"""
+    """claude.ai 拒收含中文/全角符号路径、超过 200 个文件的 zip，所以包内：
+    方法层 → method.md；卡片按月合并成 cards/YYYY-MM.md，每张前加一行 <!-- card 日期 -->
+    （日期唯一）；标题收进 index.md。"""
     cards_dir = ref / "cards"
     cards_dir.mkdir(parents=True)
     shutil.copy(ROOT / "方法层.md", ref / "method.md")
-    rows = []
+    rows, months, seen = [], {}, set()
     for p in sorted((ROOT / "cards").glob("*.md")):
         date, title = p.stem[:10], p.stem[11:]
-        dst = cards_dir / f"{date}.md"
-        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) or dst.exists():
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) or date in seen:
             sys.exit(f"卡片文件名日期不合规或重复：{p.name}")
-        shutil.copy(p, dst)
+        seen.add(date)
+        text = p.read_text(encoding="utf-8").strip()
+        months.setdefault(date[:7], []).append(f"<!-- card {date} -->\n{text}\n")
         rows.append(f"- {date} 《{title}》")
+    for month, cards in months.items():
+        (cards_dir / f"{month}.md").write_text("\n".join(cards), encoding="utf-8")
     (ref / "index.md").write_text(
-        f"# 卡片目录（{len(rows)} 张）\n\n文件在 `references/cards/日期.md`。\n\n" + "\n".join(rows) + "\n",
+        f"# 卡片目录（{len(rows)} 张）\n\n"
+        "卡片按月存在 `references/cards/YYYY-MM.md`，每张以 `<!-- card 日期 -->` 开头。\n\n"
+        + "\n".join(rows) + "\n",
         encoding="utf-8")
 
 
@@ -73,11 +82,13 @@ def main():
     bad = [str(f.relative_to(DIST)) for f in files if not re.fullmatch(r"[A-Za-z0-9._/-]+", str(f.relative_to(DIST)))]
     if bad:
         sys.exit(f"包内路径必须是 ASCII（claude.ai 会拒收）：{bad[:5]}")
+    if len(files) > MAX_FILES:
+        sys.exit(f"包内 {len(files)} 个文件，超过 claude.ai 上限 {MAX_FILES}")
     with zipfile.ZipFile(pkg, "w", zipfile.ZIP_DEFLATED) as z:
         for f in files:
             z.write(f, f.relative_to(DIST))
-    n_cards = len(list((out / "references" / "cards").glob("*.md")))
-    print(f"\n已生成 {pkg.relative_to(ROOT)}：{n_cards} 张卡片，{pkg.stat().st_size / 1024:.0f} KB")
+    n_cards = sum(t.read_text(encoding="utf-8").count("<!-- card ") for t in (out / "references" / "cards").glob("*.md"))
+    print(f"\n已生成 {pkg.relative_to(ROOT)}：{n_cards} 张卡片，{len(files)} 个文件，{pkg.stat().st_size / 1024:.0f} KB")
 
 
 if __name__ == "__main__":
