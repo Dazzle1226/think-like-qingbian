@@ -1,0 +1,9 @@
+# 原文与原始网页只在本地使用，不要提交
+articles/
+data/raw/
+data/errors.jsonl
+data/*.log
+dist/
+.venv/
+__pycache__/
+.DS_Store
