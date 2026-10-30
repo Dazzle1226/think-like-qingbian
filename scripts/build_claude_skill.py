@@ -6,6 +6,8 @@
 原文不打包：体积大，卡片已含观点、论证链和逐字锚句。
 """
 import re
+import argparse
+import json
 import shutil
 import subprocess
 import sys
@@ -69,12 +71,41 @@ def write_references(ref):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--include-articles", action="store_true", help="本机私用包附带已确认正文边界的原文")
+    args = ap.parse_args()
     check_cards()
     out = DIST / NAME
     if out.exists():
         shutil.rmtree(out)
     shutil.copytree(SRC, out, ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"))
     write_references(out / "references")
+    n_articles, excluded_articles = 0, []
+    if args.include_articles:
+        articles = out / "references" / "articles"
+        articles.mkdir()
+        months, rows = {}, []
+        for p in sorted((ROOT / "articles").glob("*.md")):
+            text = p.read_text(encoding="utf-8")
+            if not re.search(r"^end_marker: true$", text, re.M):
+                excluded_articles.append(p.name)
+                continue  # 推广边界不清的原文不进入 skill
+            aid = re.search(r'^id: "([^"]+)"$', text, re.M)
+            if not aid:
+                sys.exit(f"原文缺 id：{p.name}")
+            key = "article:" + aid.group(1)
+            months.setdefault(p.name[:7], []).append(f"<!-- article {key} -->\n{text.strip()}\n")
+            rows.append(f"- {key} {p.stem}")
+        for month, texts in months.items():
+            (articles / f"{month}.md").write_text("\n".join(texts), encoding="utf-8")
+        n_articles = len(rows)
+        (out / "references" / "articles-index.md").write_text("# 原文目录（非观点卡片）\n\n" + "\n".join(rows) + "\n", encoding="utf-8")
+    n_cards = len(list((ROOT / "cards").glob("*.md")))
+    skill = out / "SKILL.md"
+    skill.write_text(skill.read_text(encoding="utf-8").replace("{{CARD_COUNT}}", str(n_cards)).replace("{{ARTICLE_COUNT}}", str(n_articles)), encoding="utf-8")
+    (out / "references" / "coverage.json").write_text(json.dumps({"cards": n_cards, "searchable_articles": n_articles, "excluded_articles": excluded_articles}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    if args.include_articles:
+        print(f"原文可检索 {n_articles} 篇；正文边界待核 {len(excluded_articles)} 篇，未打包（清单见 references/coverage.json）")
     validate(out / "SKILL.md")
 
     pkg = DIST / f"{NAME}.skill"

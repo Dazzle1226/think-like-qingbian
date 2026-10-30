@@ -151,6 +151,10 @@ def parse(html, item):
 def write_markdown(art, item, aid):
     safe = re.sub(r'[\\/:*?"<>|\s]+', "_", art["title"]).strip("_")[:60] or aid
     path = OUT_DIR / f"{art['date']}_{safe}.md"
+    if path.exists():
+        previous = re.search(r'^id: "([^"]+)"$', path.read_text(encoding="utf-8"), re.M)
+        if not previous or previous.group(1) != aid:
+            raise ValueError(f"文件名冲突，未覆盖：{path.name} / {aid}")
     front = {
         "title": art["title"], "account": art["account"], "author": art["author"],
         "date": art["date"], "original": art["original"], "end_marker": art["end_marker"],
@@ -176,6 +180,7 @@ def main():
     ap.add_argument("--limit", type=int)
     ap.add_argument("--url")
     ap.add_argument("--offline", action="store_true", help="只用已下载的原始页重新生成，不发请求")
+    ap.add_argument("--only-missing", action="store_true", help="跳过已有 Markdown 的文章 ID")
     args = ap.parse_args()
 
     RAW_DIR.mkdir(parents=True, exist_ok=True)
@@ -184,6 +189,13 @@ def main():
     session.headers["User-Agent"] = UA
 
     items = load_items(args)
+    if args.only_missing:
+        existing_ids = set()
+        for path in OUT_DIR.glob("*.md"):
+            match = re.search(r'^id: "([^"]+)"$', path.read_text(encoding="utf-8"), re.M)
+            if match:
+                existing_ids.add(match.group(1))
+        items = [it for it in items if article_id(it) not in existing_ids]
     if args.offline:
         items = [it for it in items if (RAW_DIR / f"{article_id(it)}.html").exists()]
     ok, cached, errors, no_end = 0, 0, [], []

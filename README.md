@@ -1,6 +1,6 @@
 # 请辩知识库（非官方读书笔记）
 
-把公众号「请辩」（作者：蔡垒磊）合集「认知」里的 402 篇文章（2023-01 ~ 2026-10）整理成**观点卡片**和一份**思考方法总结**，
+公众号「请辩」（作者：蔡垒磊）的非官方知识库：目前目录覆盖 8 个公开合集、954 篇去重文章，已提炼 **404 张观点卡片**和一份**思考方法总结**，
 让 AI 助手（Codex、Cursor、Claude、ChatGPT、Gemini 等都可以）按作者的思考框架分析你的问题，同时标明每个观点出自哪篇文章、哪些是推演。
 
 ## ⚠️ 声明
@@ -16,13 +16,17 @@
 
 | 路径 | 内容 |
 |---|---|
-| `cards/` | 402 张观点卡片，一篇文章一张，文件名 `日期_标题.md`，frontmatter 里有原文链接 |
-| `方法层.md` | 从全部卡片归纳的作者思考方式：14 条思考习惯、常追问的问题、论证风格、使用边界，每条标出处日期 |
+| `cards/` | 404 张观点卡片，一篇文章一张，文件名 `日期_标题.md`，frontmatter 里有原文链接 |
+| `方法层.md` | 从全部卡片归纳的作者思考方式：思考习惯、常追问的问题、论证风格、使用边界，每条标出处日期 |
 | `AGENTS.md` | 给编程类 agent 的说明：怎么用方法层和卡片回答问题（`CLAUDE.md` 引用它） |
 | `prompts/system-prompt.md` | 给聊天类工具的通用系统提示词 |
 | `skill_src/` | Agent Skill 格式的模板：`SKILL.md` + 只用标准库的检索脚本 |
 | `scripts/` | 抓取、清洗、核对、检索、打包工具（见下文），检索和打包只用 Python 标准库 |
 | `data/list.jsonl` | 文章列表（标题、发布时间、原文链接） |
+
+目录条数不等于已提炼篇数。公开仓库及 Release 下载包只含卡片和方法层，不含原文；本机个人全文库可包含更多已下载正文。
+
+维护策略：每周检查近 30 天的新文及近期缺口，不自动追补早期文章。公开仓库和 Release 由维护者的本机任务同步，电脑需开机且 Codex 可运行。
 
 每张卡片的结构：一句话 / 论证链 / 可复用的模型 /（典型例子）/ 可调用的场景 / 原文锚句 / 使用边界（整理者注）。
 读者来信类文章会把读者的问题和作者的回答分开写。
@@ -71,8 +75,9 @@ python3 scripts/search.py -n 8 实习 学历 毕业 试错
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/fetch_album.py          # 从公开的合集接口拉文章列表 → data/list.jsonl
-.venv/bin/python scripts/fetch_articles.py       # 下载并清洗 → articles/（可断点续传，自带限速）
+.venv/bin/python scripts/fetch_album.py --all    # 从已下载页面发现合集；初次无缓存只识别默认合集
+.venv/bin/python scripts/prefetch_articles.py    # 只补近 30 天正文（自带限速）
+.venv/bin/python scripts/fetch_articles.py --only-missing --offline  # 转换已下载正文
 .venv/bin/python scripts/check_cards.py          # 有原文时会逐字核对每张卡片的锚句
 ```
 
